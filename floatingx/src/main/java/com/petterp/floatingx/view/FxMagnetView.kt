@@ -22,7 +22,7 @@ import com.petterp.floatingx.util.topActivity
  * 基础悬浮窗View 源自 ->
  *
  * https://github.com/shenzhen2017/EasyFloat/blob/main/easyfloat/src/main/java/com/zj/easyfloat/floatingview/FloatingMagnetView.java
- * */
+ */
 @SuppressLint("ViewConstructor")
 class FxMagnetView @JvmOverloads constructor(
     context: Context,
@@ -56,21 +56,46 @@ class FxMagnetView @JvmOverloads constructor(
     internal var childView: View? = null
 
     init {
+        initView()
+    }
+
+    private fun initView() {
         mMoveAnimator = MoveAnimator()
         isClickable = true
-        if (helper.layoutId != 0) {
-            childView = inflate(context, helper.layoutId, this)
-            helper.layoutParams?.let {
-                childView?.layoutParams = it
-            }
-            helper.fxLog?.d("fxView-->init, source-[layout]")
-        }
+        childView = inflateLayoutView() ?: inflateLayoutId()
+        if (childView == null) return
+        if (childView == null) helper.fxLog?.e("fxView--> inflateView, Error")
         val hasConfig = helper.iFxConfigStorage?.hasConfig() ?: false
         layoutParams = defaultLayoutParams(hasConfig)
         x = if (hasConfig) helper.iFxConfigStorage!!.getX() else helper.defaultX
         y = if (hasConfig) helper.iFxConfigStorage!!.getY() else initDefaultY()
         helper.fxLog?.d("fxView->x&&y   hasConfig-($hasConfig),x-($x),y-($y)")
         setBackgroundColor(Color.TRANSPARENT)
+    }
+
+    private fun inflateLayoutView(): View? {
+        val view = helper.layoutView?.get()
+        if (view != null) {
+            val lp = layoutParams ?: LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            addViewInLayout(view, -1, lp, true)
+            helper.fxLog?.d("fxView-->init, way-[layoutView]")
+        }
+        return view
+    }
+
+    private fun inflateLayoutId(): View? {
+        if (helper.layoutId != 0) {
+            helper.fxLog?.d("fxView-->init, way-[layoutId]")
+            val view = inflate(context, helper.layoutId, this)
+            helper.layoutParams?.let {
+                view.layoutParams = it
+            }
+            return view
+        }
+        return null
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
@@ -110,8 +135,9 @@ class FxMagnetView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-        if (updateSize() && helper.enableAbsoluteFix)
+        if (updateSize() && helper.enableAbsoluteFix) {
             fixLocation()
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -158,10 +184,11 @@ class FxMagnetView @JvmOverloads constructor(
 
     private fun initDefaultY(): Float {
         var defaultY = helper.defaultY
-        if (helper.defaultY > 0 || helper.gravity == Direction.RIGHT_OR_TOP || helper.gravity == Direction.LEFT_OR_TOP)
+        if (helper.defaultY > 0 || helper.gravity == Direction.RIGHT_OR_TOP || helper.gravity == Direction.LEFT_OR_TOP) {
             defaultY += helper.statsBarHeight + helper.borderMargin.t
-        else if (helper.defaultY < 0 || helper.gravity == Direction.LEFT_OR_BOTTOM || helper.gravity == Direction.RIGHT_OR_BOTTOM)
+        } else if (helper.defaultY < 0 || helper.gravity == Direction.LEFT_OR_BOTTOM || helper.gravity == Direction.RIGHT_OR_BOTTOM) {
             defaultY -= helper.navigationBarHeight - helper.borderMargin.b
+        }
         return defaultY
     }
 
@@ -282,8 +309,9 @@ class FxMagnetView @JvmOverloads constructor(
             isMoveLoading = false
             (parent as ViewGroup).post {
                 // 如果视图大小改变
-                if (updateSize())
+                if (updateSize()) {
                     moveToEdge(isLandscape = isLandscape)
+                }
             }
         }
     }
@@ -337,8 +365,9 @@ class FxMagnetView @JvmOverloads constructor(
         }
         mMoveAnimator?.start(moveX, moveY)
         helper.fxLog?.d("fxView-->moveToEdge---x-($x)，y-($y) ->  moveX-($moveX),moveY-($moveY)")
-        if (helper.enableSaveDirection)
+        if (helper.enableSaveDirection) {
             saveConfig(moveX, moveY)
+        }
     }
 
     private inner class MoveAnimator : Runnable {
@@ -374,10 +403,12 @@ class FxMagnetView @JvmOverloads constructor(
     }
 
     private fun defaultLayoutParams(hasConfig: Boolean) = LayoutParams(
-        LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT
+        LayoutParams.WRAP_CONTENT,
+        LayoutParams.WRAP_CONTENT
     ).apply {
-        if (!hasConfig)
+        if (!hasConfig) {
             gravity = helper.gravity.value
+        }
     }
 
     private fun saveConfig(moveX: Float, moveY: Float) {
