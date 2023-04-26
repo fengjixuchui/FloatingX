@@ -9,31 +9,38 @@ import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import com.petterp.floatingx.FloatingX
 import com.petterp.floatingx.assist.helper.AppHelper
+import com.petterp.floatingx.impl.lifecycle.FxProxyLifecycleCallBackImpl
 import com.petterp.floatingx.listener.control.IFxAppControl
 import com.petterp.floatingx.util.decorView
-import com.petterp.floatingx.util.lazyLoad
 import com.petterp.floatingx.util.topActivity
-import java.lang.ref.WeakReference
 
 /** 全局控制器 */
-open class FxAppControlImpl(private val helper: AppHelper) :
-    FxBasisControlImpl(helper), IFxAppControl {
+class FxAppControlImpl(
+    private val helper: AppHelper,
+    private val proxyLifecycleImpl: FxProxyLifecycleCallBackImpl
+) : FxBasisControlImpl(helper),
+    IFxAppControl,
+    Application.ActivityLifecycleCallbacks by proxyLifecycleImpl {
 
-    /** 对于状态栏高度的实时监听,在小屏模式下,效果极好 */
-    private val windowsInsetsListener by lazyLoad {
-        OnApplyWindowInsetsListener { _, insets ->
-            val statusBar = insets.stableInsetTop
-            helper.statsBarHeight = statusBar
+    init {
+        proxyLifecycleImpl.init(helper, this)
+    }
+
+    private val windowsInsetsListener = OnApplyWindowInsetsListener { _, insets ->
+        val statusBar = insets.stableInsetTop
+        if (helper.statsBarHeight != statusBar) {
             helper.fxLog?.v("System--StatusBar---old-(${helper.statsBarHeight}),new-($statusBar))")
-            insets
+            helper.statsBarHeight = statusBar
         }
+        insets
     }
 
     override fun show(activity: Activity) {
-        super.show()
         if (isShow()) return
         if (attach(activity)) {
             getManagerView()?.show()
+            updateEnableStatus(true)
+            FloatingX.checkAppLifecycleInstall()
         }
     }
 
@@ -44,31 +51,21 @@ open class FxAppControlImpl(private val helper: AppHelper) :
     }
 
     override fun getBindActivity(): Activity? {
-        if (mContainer?.get() === topActivity?.decorView) {
+        if (getContainerGroup() === topActivity?.decorView) {
             return topActivity
         }
         return null
     }
 
     /** 注意,全局浮窗下,view必须是全局application对应的context! */
-    override fun updateManagerView(view: View) {
+    override fun updateView(view: View) {
         if (view.context !is Application) {
             throw IllegalArgumentException("view.context != Application,The global floating window must use application as context!")
         }
-        super.updateManagerView(view)
+        super.updateView(view)
     }
 
-    override fun context(): Context = FloatingX.context
-
-    /** 请注意： 调用此方法前请确定在初始化fx时,调用了show方法,否则,fx默认不会插入到全局Activity */
-    override fun show() {
-        if (topActivity == null) {
-            helper.enableFx = true
-            helper.fxLog?.e("show-fx, topActivity=null,Do not call it during initialization in Application!")
-            return
-        }
-        show(topActivity!!)
-    }
+    override fun context(): Context = FloatingX.getContext()
 
     private fun initWindowsInsetsListener() {
         getManagerView()?.let {
@@ -79,7 +76,7 @@ open class FxAppControlImpl(private val helper: AppHelper) :
 
     internal fun attach(activity: Activity): Boolean {
         activity.decorView?.let {
-            if (getContainer() === it) {
+            if (getContainerGroup() === it) {
                 return false
             }
             var isAnimation = false
@@ -93,10 +90,10 @@ open class FxAppControlImpl(private val helper: AppHelper) :
                     View.VISIBLE
                 detach()
             }
-            mContainer = WeakReference(it)
+            setContainerGroup(it)
             helper.fxLog?.d("fxView-lifecycle-> code->addView")
             helper.iFxViewLifecycle?.postAttach()
-            getContainer()?.addView(getManagerView())
+            getContainerGroup()?.addView(getManagerView())
             if (isAnimation && helper.enableAnimation && helper.fxAnimation != null) {
                 helper.fxLog?.d("fxView->Animation -----start")
                 helper.fxAnimation?.fromStartAnimator(getManagerView())
@@ -122,12 +119,11 @@ open class FxAppControlImpl(private val helper: AppHelper) :
         // 重置之前记得移除insets
         clearWindowsInsetsListener()
         super.reset()
-        FloatingX.reset()
+        FloatingX.uninstall(helper.tag, this)
     }
 
     private fun clearWindowsInsetsListener() {
-        getManagerView()?.let {
-            ViewCompat.setOnApplyWindowInsetsListener(it, null)
-        }
+        val managerView = getManagerView() ?: return
+        ViewCompat.setOnApplyWindowInsetsListener(managerView, null)
     }
 }

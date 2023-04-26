@@ -1,6 +1,5 @@
 package com.petterp.floatingx.assist.helper
 
-import android.content.Context
 import android.view.View
 import android.widget.FrameLayout
 import androidx.annotation.LayoutRes
@@ -9,58 +8,110 @@ import com.petterp.floatingx.listener.IFxConfigStorage
 import com.petterp.floatingx.listener.IFxScrollListener
 import com.petterp.floatingx.listener.IFxViewLifecycle
 import com.petterp.floatingx.util.FxLog
-import java.lang.ref.WeakReference
 import kotlin.math.abs
 
 /** 通用构建器helper */
 open class BasisHelper {
-    @LayoutRes
+    @JvmField
     internal var layoutId: Int = 0
-    internal var layoutView: WeakReference<View>? = null
-    internal var gravity: Direction = Direction.LEFT_OR_TOP
-    internal var clickTime: Long = 500L
+
+    @JvmField
+    internal var layoutView: View? = null
+
+    @JvmField
+    internal var gravity: FxGravity = FxGravity.DEFAULT
+
+    @JvmField
+    internal var clickTime: Long = 300L
+
+    @JvmField
     internal var layoutParams: FrameLayout.LayoutParams? = null
+
+    @JvmField
     internal var fxAnimation: FxAnimation? = null
 
+    @JvmField
     internal var defaultY: Float = 0f
+
+    @JvmField
     internal var defaultX: Float = 0f
+
+    @JvmField
     internal var edgeOffset: Float = 0f
-    internal var borderMargin: BorderMargin = BorderMargin()
 
+    @JvmField
+    internal var fxBorderMargin: FxBorderMargin = FxBorderMargin()
+
+    @JvmField
     internal var enableFx: Boolean = false
-    internal var enableAbsoluteFix: Boolean = false
+
+    @JvmField
     internal var enableEdgeAdsorption: Boolean = true
+
+    @JvmField
     internal var enableEdgeRebound: Boolean = true
+
+    @JvmField
     internal var enableAnimation: Boolean = false
+
+    @JvmField
     internal var enableSaveDirection: Boolean = false
+
+    @JvmField
     internal var enableDebugLog: Boolean = false
+
+    @JvmField
     internal var enableTouch: Boolean = true
-    internal var enableClickListener: Boolean = false
 
+    @JvmField
+    internal var enableClickListener: Boolean = true
+
+    @JvmField
+    internal var enableAssistLocation: Boolean = false
+
+    @JvmField
     internal var iFxScrollListener: IFxScrollListener? = null
+
+    @JvmField
     internal var iFxViewLifecycle: IFxViewLifecycle? = null
+
+    @JvmField
     internal var iFxConfigStorage: IFxConfigStorage? = null
-    internal var clickListener: ((View) -> Unit)? = null
 
+    @JvmField
+    internal var iFxClickListener: View.OnClickListener? = null
+
+    @JvmField
     internal var fxLog: FxLog? = null
-    private var fxLogTag: String = ""
 
+    @JvmField
+    internal var fxLogTag: String = ""
+
+    @JvmField
     /** 底部导航栏与状态栏测量高度 */
     internal var navigationBarHeight: Int = 0
+
+    @JvmField
     internal var statsBarHeight: Int = 0
 
+    @JvmSynthetic
     internal fun initLog(scope: String) {
-        if (enableDebugLog) fxLog = FxLog.builder("$scope$fxLogTag")
+        if (enableDebugLog) fxLog = FxLog.builder("$scope-$fxLogTag")
+    }
+
+    @JvmSynthetic
+    internal fun clear() {
+        layoutView = null
+        enableFx = false
+        fxAnimation?.cancelAnimation()
     }
 
     abstract class Builder<T, B : BasisHelper> {
-        private var context: Context? = null
-
         @LayoutRes
         private var layoutId: Int = 0
-        private var layoutView: WeakReference<View>? = null
-        private var gravity: Direction = Direction.RIGHT_OR_BOTTOM
-        private var clickTime: Long = 500L
+        private var layoutView: View? = null
+        private var gravity: FxGravity = FxGravity.DEFAULT
+        private var clickTime: Long = 300L
         private var layoutParams: FrameLayout.LayoutParams? = null
         private var fxAnimation: FxAnimation? = null
 
@@ -68,9 +119,9 @@ open class BasisHelper {
         private var defaultX: Float = 0f
         private var edgeOffset: Float = 0f
         private var enableFx: Boolean = false
-        private var borderMargin: BorderMargin = BorderMargin()
+        private var fxBorderMargin: FxBorderMargin = FxBorderMargin()
+        private var assistLocation: FxBorderMargin = FxBorderMargin()
 
-        private var enableAbsoluteFix: Boolean = false
         private var enableEdgeAdsorption: Boolean = true
         private var enableEdgeRebound: Boolean = true
         private var enableAnimation: Boolean = false
@@ -78,6 +129,7 @@ open class BasisHelper {
         private var fxLogTag: String = ""
         private var enableTouch: Boolean = true
         private var enableClickListener: Boolean = false
+        private var enableAssistLocation: Boolean = false
 
         private var enableSaveDirection: Boolean = false
         private var enableDefaultSave: Boolean = false
@@ -85,17 +137,14 @@ open class BasisHelper {
         private var iFxConfigStorage: IFxConfigStorage? = null
         private var iFxScrollListener: IFxScrollListener? = null
         private var iFxViewLifecycle: IFxViewLifecycle? = null
-        private var ifxClickListener: ((View) -> Unit)? = null
+        private var ifxClickListener: View.OnClickListener? = null
 
         protected abstract fun buildHelper(): B
 
         open fun build(): B =
             buildHelper().apply {
-                if (this@Builder.defaultX == 0f && this@Builder.defaultY == 0f && this@Builder.edgeOffset != 0f) {
-                    sizeViewDirection()
-                }
+                adtSizeViewDirection()
                 enableFx = this@Builder.enableFx
-
                 layoutId = this@Builder.layoutId
                 layoutView = this@Builder.layoutView
                 gravity = this@Builder.gravity
@@ -107,14 +156,14 @@ open class BasisHelper {
                 defaultX = this@Builder.defaultX
 
                 edgeOffset = this@Builder.edgeOffset
-                enableAbsoluteFix = this@Builder.enableAbsoluteFix
                 enableEdgeAdsorption = this@Builder.enableEdgeAdsorption
                 enableEdgeRebound = this@Builder.enableEdgeRebound
                 enableAnimation = this@Builder.enableAnimation
-                borderMargin = this@Builder.borderMargin
+                fxBorderMargin = this@Builder.fxBorderMargin
                 enableSaveDirection = this@Builder.enableSaveDirection
                 enableTouch = this@Builder.enableTouch
                 enableClickListener = this@Builder.enableClickListener
+                enableAssistLocation = this@Builder.enableAssistLocation
 
                 enableDebugLog = this@Builder.enableDebugLog
                 fxLogTag = this@Builder.fxLogTag
@@ -122,7 +171,7 @@ open class BasisHelper {
                 iFxScrollListener = this@Builder.iFxScrollListener
                 iFxViewLifecycle = this@Builder.iFxViewLifecycle
                 iFxConfigStorage = this@Builder.iFxConfigStorage
-                clickListener = this@Builder.ifxClickListener
+                iFxClickListener = this@Builder.ifxClickListener
             }
 
         /** 设置启用fx */
@@ -138,31 +187,27 @@ open class BasisHelper {
         }
 
         /** 设置悬浮窗view的layout */
-        @JvmOverloads
-        fun setLayout(@LayoutRes layoutId: Int, layoutParams: FrameLayout.LayoutParams? = null): T {
-            this.layoutView?.clear()
+        fun setLayout(@LayoutRes layoutId: Int): T {
             this.layoutView = null
             this.layoutId = layoutId
-            this.layoutParams = layoutParams
             return this as T
         }
 
         /** 设置悬浮窗View */
-        @JvmOverloads
-        fun setLayoutView(view: View, layoutParams: FrameLayout.LayoutParams? = null): T {
+        fun setLayoutView(view: View): T {
             layoutId = 0
-            if (view.layoutParams == null) view.layoutParams = layoutParams
-            this.layoutView = WeakReference(view)
+            this.layoutView = view
             return this as T
         }
 
         /**
-         * 是否启用触摸事件-(onTouchEvent)
+         * 是否允许浮窗移动 -(onTouchEvent)
          *
-         * true -> 浮窗允许移动 , 并且主动消费所有onTouchEvent中的事件
+         * true -> 浮窗允许移动
          *
-         * false -> ,浮窗屏蔽移动 , 事件将遵循默认传递过程，将询问其子view是否需要消费,用户可自行处理
+         * false -> 浮窗屏蔽移动
          *
+         * Tips: 不影响原有手势事件的传递流程
          * @param isEnable 默认true
          */
         fun setEnableTouch(isEnable: Boolean): T {
@@ -186,24 +231,12 @@ open class BasisHelper {
             return this as T
         }
 
-        /**
-         * 启用位置修复 用于 onConfigurationChanged 不能被正常调用的情况下,比如特定机型 默认
-         * false 启用此开关,每一次onDraw,框架都会计算当前视图是否发生大小改变，如果改变，则强行修复当前错乱的位置
-         * 理论上,当屏幕旋转或者小窗模式,view会收到onConfigurationChanged 调用,框架内部会进行一次修复 ps:
-         * 部分机型，在小窗模式缩放窗口大小时,并不会触发 onConfigurationChanged ps: 此方法对性能有一定影响,如果
-         * onConfigurationChanged 不能正常调用,检查Activity-manifest 是否添加了以下
-         * android:configChanges="orientation|screenSize"
-         */
-        fun setEnableAbsoluteFix(isEnable: Boolean): T {
-            this.enableAbsoluteFix = isEnable
-            return this as T
-        }
-
-        /** 设置悬浮窗点击事件 [clickListener] 点击事件 [time] 重复时间-> default=500ms */
+        /** 设置悬浮窗点击事件 [clickListener] 点击事件 [time] 重复时间-> default=500ms
+         * */
         @JvmOverloads
         fun setOnClickListener(
             time: Long = 500L,
-            clickListener: ((View) -> Unit)
+            clickListener: View.OnClickListener
         ): T {
             this.enableClickListener = true
             this.ifxClickListener = clickListener
@@ -211,9 +244,14 @@ open class BasisHelper {
             return this as T
         }
 
-        /** 设置悬浮窗的layoutParams,只会与[setLayout]匹配使用 */
-        @Deprecated("后期会逐渐移除,建议通过[setLayout]时一起设置")
-        fun setLayoutParams(layoutParams: FrameLayout.LayoutParams): T {
+        /**
+         * 设置悬浮窗的layoutParams,即浮窗容器,非自己传递进去的用于显示的View
+         *
+         * 默认wrap-wrap
+         *
+         * ps: 不建议自行调用,此方法会影响浮窗的正常滑动效果
+         */
+        fun setManagerParams(layoutParams: FrameLayout.LayoutParams): T {
             this.layoutParams = layoutParams
             return this as T
         }
@@ -226,7 +264,7 @@ open class BasisHelper {
 
         /** 设置悬浮窗可移动位置偏移 */
         fun setBorderMargin(t: Float, l: Float, b: Float, r: Float): T {
-            borderMargin.apply {
+            fxBorderMargin.apply {
                 this.t = t
                 this.l = l
                 this.b = b
@@ -237,24 +275,24 @@ open class BasisHelper {
 
         /** 设置可移动范围内相对屏幕顶部偏移量 */
         fun setTopBorderMargin(t: Float): T {
-            borderMargin.t = abs(t)
+            fxBorderMargin.t = abs(t)
             return this as T
         }
 
         /** 设置可移动范围内相对屏幕左侧偏移量 */
         fun setLeftBorderMargin(l: Float): T {
-            borderMargin.l = abs(l)
+            fxBorderMargin.l = abs(l)
             return this as T
         }
 
         /** 设置可移动范围内相对屏幕右侧偏移量 */
         fun setRightBorderMargin(r: Float): T {
-            borderMargin.r = abs(r)
+            fxBorderMargin.r = abs(r)
             return this as T
         }
 
         fun setBottomBorderMargin(b: Float): T {
-            borderMargin.b = abs(b)
+            fxBorderMargin.b = abs(b)
             return this as T
         }
 
@@ -265,22 +303,22 @@ open class BasisHelper {
             return this as T
         }
 
-        /** 设置默认的x坐标,以用户可触摸视图开始，不包含系统导航栏与状态栏 注意: 直接调用setX,框架将忽略对位置的优化,直接使用此x */
+        /** 设置默认的x坐标 */
         fun setX(x: Float): T {
             this.defaultX = x
             return this as T
         }
 
-        /** 设置默认的y坐标,以用户可触摸视图开始，不包含系统导航栏与状态栏 */
+        /** 设置默认的y坐标 */
         fun setY(y: Float): T {
             this.defaultY = y
             return this as T
         }
 
         /**
-         * 调用此方法,x,y的坐标将根据 传递进来的 [gravity] 进行相对应调整 比如当[gravity]=
-         * [Direction.LEFT_OR_BOTTOM] 则相对应的([defaultX], [defaultY]) 最终会根据 t,b,l,r
-         * 偏移量计算，而非直接坐标
+         * 调用此方法,将忽视传递的(x,y)。 浮窗的坐标将根据 传递进来的 [gravity] + 此方法传入的偏移量
+         * 计算，而非直接坐标。 这样的好处是,你不用去关注具体浮窗坐标应该是什么，而是可以依靠参照物的方式摆放。
+         * 比如默认你的浮窗在右下角，但是想增加一点在右侧偏移，此时就可以依靠此方法，将浮窗位置设置在右下角，然后增加相应方向的偏移量即可。
          *
          * @param t 设置可移动范围内的相对屏幕顶部偏移量 App级别时
          *     不包含状态栏,框架会自行计算高度并减去,即顶部偏移量最终=topMargin+框架计算好的状态栏+moveEdg。
@@ -297,7 +335,11 @@ open class BasisHelper {
             l: Float = 0f,
             r: Float = 0f
         ): T {
-            sizeViewDirection(abs(t), abs(b), abs(l), abs(r))
+            this.enableAssistLocation = true
+            this.assistLocation.t = t
+            this.assistLocation.b = b
+            this.assistLocation.l = l
+            this.assistLocation.r = r
             return this as T
         }
 
@@ -307,8 +349,12 @@ open class BasisHelper {
             return this as T
         }
 
-        /** 设置悬浮窗视图默认位置,默认右下角 */
-        fun setGravity(gravity: Direction): T {
+        /**
+         * 设置悬浮窗视图默认位置,默认右下角,
+         *
+         * 注意：此方法会影响setX()||setY()
+         */
+        fun setGravity(gravity: FxGravity): T {
             this.gravity = gravity
             return this as T
         }
@@ -344,13 +390,14 @@ open class BasisHelper {
         /**
          * 设置存储坐标保存实现逻辑
          *
-         * @param [iFxConfigStorage] 传入IFxConfig对象, 也可自行实现接口，自定义具体实现逻辑
+         * @param iFxConfigStorage 传入IFxConfig对象, 也可自行实现接口，自定义具体实现逻辑
          * @sample com.petterp.floatingx.app.simple.FxConfigStorageToSpImpl
          *     如果使用默认实现,需自行传入context PS: 当启用并且存在历史坐标,
          *     gravity以及自定义的x,y坐标将会失效，优先使用历史坐标
-         *     如果某次边框变动或者其他影响导致原视图范围改变,现有的历史坐标位置不准确，请先移除历史坐标信息
-         *     -> 即调用外部的FloatingX.clearConfig()清除历史坐标信息
+         *     如果某次边框变动或者其他影响导致原视图范围改变,现有的历史坐标位置不准确，请先移除历史坐标信息 ->
+         *     即调用外部的FloatingX.clearConfig()清除历史坐标信息
          */
+        @Deprecated("此方法的调用需要确保页面固定不变,暂时不建议使用,后续会考虑更新逻辑")
         fun setSaveDirectionImpl(iFxConfigStorage: IFxConfigStorage): T {
             this.enableSaveDirection = true
             this.iFxConfigStorage = iFxConfigStorage
@@ -358,40 +405,55 @@ open class BasisHelper {
         }
 
         /** 辅助坐标的实现 采用坐标偏移位置,框架自行计算合适的x,y */
-        private fun sizeViewDirection(
-            t: Float = 0f,
-            b: Float = 0f,
-            l: Float = 0f,
-            r: Float = 0f
-        ) {
+        private fun adtSizeViewDirection() {
+            // 如果坐标规则不符合要求,且未开启辅助定位,则直接返回
+            if (!enableAssistLocation && !gravity.isDefault()) return
+            val edgeOffset = if (enableEdgeRebound) edgeOffset else 0f
+            val b = assistLocation.b + fxBorderMargin.b + edgeOffset
+            val t = assistLocation.t + fxBorderMargin.t + edgeOffset
+            val r = assistLocation.r + fxBorderMargin.r + edgeOffset
+            val l = assistLocation.l + fxBorderMargin.l + edgeOffset
             defaultX = 0f
             defaultY = 0f
-            val marginEdgeTox = edgeOffset
-            val marginEdgeToy = edgeOffset
             when (gravity) {
-                Direction.LEFT_OR_BOTTOM -> {
-                    defaultY = -(marginEdgeToy + b)
-                    defaultX = marginEdgeTox + l
+                FxGravity.DEFAULT,
+                FxGravity.LEFT_OR_TOP -> {
+                    defaultX = l
+                    defaultY = t
                 }
-                Direction.RIGHT_OR_BOTTOM -> {
-                    defaultY = -(marginEdgeToy + b)
-                    defaultX = -(marginEdgeTox + r)
+
+                FxGravity.LEFT_OR_BOTTOM -> {
+                    defaultY = -b
+                    defaultX = l
                 }
-                Direction.RIGHT_OR_TOP -> {
-                    defaultX = -(marginEdgeTox + r)
-                    defaultY = marginEdgeToy + t
+
+                FxGravity.RIGHT_OR_BOTTOM -> {
+                    defaultY = -b
+                    defaultX = -r
                 }
-                Direction.RIGHT_OR_CENTER -> {
-                    defaultX = -(marginEdgeTox + r)
+
+                FxGravity.RIGHT_OR_TOP -> {
+                    defaultX = -r
+                    defaultY = t
                 }
-                Direction.LEFT_OR_CENTER -> {
-                    defaultX = marginEdgeTox + l
+
+                FxGravity.RIGHT_OR_CENTER -> {
+                    defaultX = -r
                 }
-                Direction.DEFAULT,
-                Direction.LEFT_OR_TOP -> {
-                    defaultX = marginEdgeTox + l
-                    defaultY = marginEdgeToy + t
+
+                FxGravity.LEFT_OR_CENTER -> {
+                    defaultX = l
                 }
+
+                FxGravity.TOP_OR_CENTER -> {
+                    defaultY = t
+                }
+
+                FxGravity.BOTTOM_OR_CENTER -> {
+                    defaultY = -b
+                }
+
+                else -> {}
             }
         }
     }

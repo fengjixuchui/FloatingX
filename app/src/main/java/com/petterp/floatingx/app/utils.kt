@@ -3,6 +3,8 @@ package com.petterp.floatingx.app
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -13,10 +15,10 @@ import android.widget.TextView
 import androidx.core.widget.NestedScrollView
 
 /**
+ * 写示例页面的工具
  *
  * @author petterp
  */
-
 inline fun Activity.createLinearLayoutToParent(obj: LinearLayout.() -> Unit) {
     val view = createLinearLayout(obj)
     setContentView(view)
@@ -40,6 +42,17 @@ inline fun ViewGroup.addLinearLayout(obj: LinearLayout.() -> Unit) =
                 LinearLayout.LayoutParams.MATCH_PARENT
             )
             orientation = LinearLayout.VERTICAL
+            obj.invoke(this)
+        }
+    )
+
+inline fun ViewGroup.addFrameLayout(obj: FrameLayout.() -> Unit) =
+    addView(
+        FrameLayout(context).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
             obj.invoke(this)
         }
     )
@@ -78,3 +91,9 @@ inline fun ViewGroup.addTextView(obj: TextView.() -> Unit) {
 fun Class<*>.start(context: Context) {
     context.startActivity(Intent(context, this))
 }
+
+val Number.dp: Int
+    get() = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, toFloat(), Resources.getSystem().displayMetrics).toInt()
+
+val Number.dpF: Float
+    get() = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, toFloat(), Resources.getSystem().displayMetrics)
